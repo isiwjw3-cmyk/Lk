@@ -1,0 +1,97 @@
+-- Notify Loading
+game:GetService("StarterGui"):SetCore("SendNotification", {
+    Title = "Ware Script",
+    Text = "มึงรอก่อนมันกำลังโหลด",
+    Duration = 3
+})
+
+task.wait(1)
+
+-- Load UI Library
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+
+local Window = OrionLib:MakeWindow({
+    Name = "Ware",
+    HidePremium = true,
+    SaveConfig = false,
+    ConfigFolder = "WareConfig"
+})
+
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483362458",
+    PremiumOnly = false
+})
+
+-- Variables
+local Player = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+local FreezeEnabled = false
+local SpeedMultiplier = 1
+local SpeedEnabled = false
+
+-- Freeze Function (ตัวแข็งทั้งตอนเดินและกระโดด)
+MainTab:AddToggle({
+    Name = "Freeze",
+    Default = false,
+    Callback = function(Value)
+        FreezeEnabled = Value
+        local char = Player.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.Anchored = FreezeEnabled
+                end
+            end
+            -- หยุด Animation
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                for _, track in pairs(hum:GetPlayingAnimationTracks()) do
+                    if FreezeEnabled then
+                        track:AdjustSpeed(0)
+                    else
+                        track:AdjustSpeed(1)
+                    end
+                end
+            end
+        end
+    end    
+})
+
+-- Speed Multiplier Slider (คูณความเร็ว 1 - 500)
+MainTab:AddSlider({
+    Name = "Speed Multiplier",
+    Min = 1,
+    Max = 500,
+    Default = 1,
+    Color = Color3.fromRGB(255,255,255),
+    Increment = 1,
+    ValueName = "x",
+    Callback = function(Value)
+        SpeedMultiplier = Value
+    end    
+})
+
+-- Loop CFrame / Movement Handling
+RunService.RenderStepped:Connect(function()
+    local char = Player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChildOfClass("Humanoid") then
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        local hrp = char.HumanoidRootPart
+        
+        -- ถ้าปรับ SpeedMultiplier > 1 ให้คำนวณทิศทางการเคลื่อนที่และคูณความเร็วทันที
+        if SpeedMultiplier > 1 and hum.MoveDirection.Magnitude > 0 then
+            hrp.CFrame = hrp.CFrame + (hum.MoveDirection * (SpeedMultiplier * 0.2))
+        end
+        
+        -- บังคับค้างแอนิเมชันถ้าเปิด Freeze
+        if FreezeEnabled then
+            for _, track in pairs(hum:GetPlayingAnimationTracks()) do
+                track:AdjustSpeed(0)
+            end
+        end
+    end
+end)
+
+OrionLib:Init()
